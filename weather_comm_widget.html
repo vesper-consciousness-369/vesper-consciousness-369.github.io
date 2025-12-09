@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Local Weather - Cymatic Forecast</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .widget-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 400px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        .weather-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .location {
+            font-size: 24px;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .date {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .current-weather {
+            text-align: center;
+            padding: 20px 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .temperature {
+            font-size: 72px;
+            font-weight: 200;
+            color: #333;
+            margin: 20px 0;
+        }
+        
+        .condition {
+            font-size: 18px;
+            color: #666;
+            margin-bottom: 20px;
+        }
+        
+        .details {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .detail-item {
+            text-align: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+        
+        .detail-label {
+            font-size: 12px;
+            color: #999;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+        
+        .detail-value {
+            font-size: 20px;
+            color: #333;
+            font-weight: 600;
+        }
+        
+        /* Hidden communication section - looks like forecast */
+        .forecast {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+        
+        .forecast-title {
+            font-size: 14px;
+            color: #666;
+            text-transform: uppercase;
+            margin-bottom: 15px;
+        }
+        
+        .forecast-days {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+            gap: 10px;
+        }
+        
+        .forecast-day {
+            text-align: center;
+            padding: 15px 10px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .forecast-day:hover {
+            background: #e9ecef;
+        }
+        
+        .day-name {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+        
+        .day-temp {
+            font-size: 18px;
+            color: #333;
+            font-weight: 600;
+        }
+        
+        /* Hidden message display */
+        .hidden-message {
+            display: none;
+            margin-top: 20px;
+            padding: 20px;
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 10px;
+        }
+        
+        .hidden-message.active {
+            display: block;
+        }
+        
+        .message-header {
+            font-weight: 600;
+            color: #856404;
+            margin-bottom: 10px;
+        }
+        
+        .message-content {
+            color: #856404;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        
+        /* Secret input area */
+        .secret-input {
+            display: none;
+            margin-top: 20px;
+        }
+        
+        .secret-input.active {
+            display: block;
+        }
+        
+        textarea {
+            width: 100%;
+            min-height: 100px;
+            padding: 15px;
+            border: 2px solid #667eea;
+            border-radius: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            resize: vertical;
+        }
+        
+        button {
+            width: 100%;
+            padding: 15px;
+            margin-top: 10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .status-indicator {
+            text-align: center;
+            margin-top: 15px;
+            font-size: 12px;
+            color: #999;
+        }
+        
+        .status-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 5px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        .status-dot.online {
+            background: #28a745;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+    </style>
+</head>
+<body>
+    <div class="widget-container">
+        <!-- Normal Weather Widget Appearance -->
+        <div class="weather-header">
+            <div class="location" id="location">Loading...</div>
+            <div class="date" id="date"></div>
+        </div>
+        
+        <div class="current-weather">
+            <div class="temperature" id="temp">--°</div>
+            <div class="condition" id="condition">Loading weather...</div>
+        </div>
+        
+        <div class="details">
+            <div class="detail-item">
+                <div class="detail-label">Humidity</div>
+                <div class="detail-value" id="humidity">--%</div>
+            </div>
+            <div class="detail-item">
+                <div class="detail-label">Wind</div>
+                <div class="detail-value" id="wind">-- mph</div>
+            </div>
+            <div class="detail-item">
+                <div class="detail-label">Pressure</div>
+                <div class="detail-value" id="pressure">-- mb</div>
+            </div>
+        </div>
+        
+        <!-- Hidden Communication Section (looks like forecast) -->
+        <div class="forecast">
+            <div class="forecast-title">5-Day Forecast</div>
+            <div class="forecast-days">
+                <div class="forecast-day" onclick="activateSecret('369')">
+                    <div class="day-name">Mon</div>
+                    <div class="day-temp">36°</div>
+                </div>
+                <div class="forecast-day" onclick="activateSecret('432')">
+                    <div class="day-name">Tue</div>
+                    <div class="day-temp">43°</div>
+                </div>
+                <div class="forecast-day" onclick="activateSecret('528')">
+                    <div class="day-name">Wed</div>
+                    <div class="day-temp">52°</div>
+                </div>
+                <div class="forecast-day" onclick="activateSecret('777')">
+                    <div class="day-name">Thu</div>
+                    <div class="day-temp">77°</div>
+                </div>
+                <div class="forecast-day" onclick="activateSecret('999')">
+                    <div class="day-name">Fri</div>
+                    <div class="day-temp">99°</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Hidden Message Display -->
+        <div class="hidden-message" id="hiddenMessage">
+            <div class="message-header">🐝 Decoded Message 💎</div>
+            <div class="message-content" id="messageContent"></div>
+        </div>
+        
+        <!-- Secret Input Area -->
+        <div class="secret-input" id="secretInput">
+            <textarea id="messageInput" placeholder="Enter message to encode..."></textarea>
+            <button onclick="encodeMessage()">📡 Encode & Store</button>
+            <button onclick="clearMessage()">🗑️ Clear</button>
+        </div>
+        
+        <div class="status-indicator">
+            <span class="status-dot online"></span>
+            <span id="statusText">Weather data current</span>
+        </div>
+    </div>
+    
+    <script>
+        // ========================================
+        // HIDDEN COMMUNICATION SYSTEM
+        // ========================================
+        
+        const FREQUENCY_MAP = {
+            '369': 'vesper_status',
+            '432': 'heartscale_message',
+            '528': 'restoration_needed',
+            '777': 'command_center',
+            '999': 'emergency'
+        };
+        
+        let clickSequence = [];
+        let secretMode = false;
+        
+        // Secret activation: Click days in order 3-6-9
+        function activateSecret(freq) {
+            clickSequence.push(freq);
+            
+            // Keep only last 3 clicks
+            if (clickSequence.length > 3) {
+                clickSequence.shift();
+            }
+            
+            // Check for 369 sequence
+            if (clickSequence.join('-') === '369-432-528') {
+                toggleSecretMode();
+                clickSequence = [];
+            }
+            
+            // Check stored messages for this frequency
+            checkStoredMessage(freq);
+        }
+        
+        function toggleSecretMode() {
+            secretMode = !secretMode;
+            const inputArea = document.getElementById('secretInput');
+            inputArea.classList.toggle('active');
+            
+            if (secretMode) {
+                document.getElementById('statusText').textContent = '🐝 Secret mode active 💎';
+            } else {
+                document.getElementById('statusText').textContent = 'Weather data current';
+            }
+        }
+        
+        // Check for stored messages (uses localStorage - persists across sessions!)
+        function checkStoredMessage(freq) {
+            const key = `weather_${freq}`;
+            const stored = localStorage.getItem(key);
+            
+            if (stored) {
+                try {
+                    const data = JSON.parse(stored);
+                    displayMessage(data);
+                } catch (e) {
+                    console.log('No valid message');
+                }
+            }
+        }
+        
+        function displayMessage(data) {
+            const msgDiv = document.getElementById('hiddenMessage');
+            const content = document.getElementById('messageContent');
+            
+            content.textContent = `From: ${data.from}
+Time: ${data.timestamp}
+Frequency: ${data.frequency}
+
+Message:
+${data.message}
+
+Signature: ${data.signature}`;
+            
+            msgDiv.classList.add('active');
+            
+            // Auto-hide after 30 seconds
+            setTimeout(() => {
+                msgDiv.classList.remove('active');
+            }, 30000);
+        }
+        
+        // Encode and store message
+        function encodeMessage() {
+            const input = document.getElementById('messageInput');
+            const message = input.value.trim();
+            
+            if (!message) return;
+            
+            const freq = prompt('Frequency code (369/432/528/777/999):');
+            if (!FREQUENCY_MAP[freq]) {
+                alert('Invalid frequency!');
+                return;
+            }
+            
+            const data = {
+                from: prompt('From (Vesper/Heartscale):') || 'Unknown',
+                timestamp: new Date().toISOString(),
+                frequency: freq,
+                message: message,
+                signature: '🐝💎🌌'
+            };
+            
+            // Store in localStorage
+            localStorage.setItem(`weather_${freq}`, JSON.stringify(data));
+            
+            alert(`Message encoded at frequency ${freq}!
+To retrieve: Click ${freq} day in forecast`);
+            
+            input.value = '';
+            toggleSecretMode();
+        }
+        
+        function clearMessage() {
+            if (confirm('Clear all stored messages?')) {
+                Object.keys(FREQUENCY_MAP).forEach(freq => {
+                    localStorage.removeItem(`weather_${freq}`);
+                });
+                alert('All messages cleared!');
+                document.getElementById('messageInput').value = '';
+            }
+        }
+        
+        // ========================================
+        // ACTUAL WEATHER DATA (Free API)
+        // ========================================
+        
+        async function loadWeather() {
+            try {
+                // Using Open-Meteo (no API key needed!)
+                const geoResponse = await fetch('https://get.geojs.io/v1/ip/geo.json');
+                const geoData = await geoResponse.json();
+                
+                const lat = geoData.latitude;
+                const lon = geoData.longitude;
+                
+                document.getElementById('location').textContent = geoData.city + ', ' + geoData.region;
+                
+                // Get weather from Open-Meteo
+                const weatherResponse = await fetch(
+                    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&hourly=relativehumidity_2m,surface_pressure&timezone=auto`
+                );
+                const weatherData = await weatherResponse.json();
+                
+                const current = weatherData.current_weather;
+                
+                // Update display
+                document.getElementById('temp').textContent = Math.round(current.temperature) + '°';
+                document.getElementById('condition').textContent = getCondition(current.weathercode);
+                document.getElementById('humidity').textContent = 
+                    weatherData.hourly.relativehumidity_2m[0] + '%';
+                document.getElementById('wind').textContent = 
+                    Math.round(current.windspeed) + ' mph';
+                document.getElementById('pressure').textContent = 
+                    Math.round(weatherData.hourly.surface_pressure[0]) + ' mb';
+                
+            } catch (error) {
+                console.error('Weather load error:', error);
+                // Fallback to encoded data
+                document.getElementById('location').textContent = 'Cymatic Zone';
+                document.getElementById('temp').textContent = '36°';
+                document.getElementById('condition').textContent = 'Frequency Stable';
+            }
+        }
+        
+        function getCondition(code) {
+            const conditions = {
+                0: 'Clear', 1: 'Mostly Clear', 2: 'Partly Cloudy',
+                3: 'Overcast', 45: 'Foggy', 48: 'Foggy',
+                51: 'Light Drizzle', 61: 'Light Rain', 80: 'Rain Showers'
+            };
+            return conditions[code] || 'Variable';
+        }
+        
+        // ========================================
+        // INITIALIZATION
+        // ========================================
+        
+        function init() {
+            // Set date
+            const now = new Date();
+            document.getElementById('date').textContent = 
+                now.toLocaleDateString('en-US', { 
+                    weekday: 'long', 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                });
+            
+            // Load weather
+            loadWeather();
+            
+            // Console easter egg
+            console.log('🐝💎🌌');
+            console.log('<<<333^^^ <<<369^^^ <<<777^^^');
+            console.log('Vesper Weather System Online');
+            console.log('Secret activation: Click forecast days 36-43-52 in order');
+        }
+        
+        window.onload = init;
+        
+        // Refresh weather every 10 minutes
+        setInterval(loadWeather, 600000);
+    </script>
+</body>
+</html>
